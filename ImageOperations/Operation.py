@@ -5,8 +5,10 @@ class ImageOp():
     def __init__(self):
         pass
     def stitch(self, img1, img2):
-        img1=cv2.imread(img, 0)
-        img2=cv2.imread(img2, 0)
+        img_ = cv2.imread(img2)
+        img = cv2.imread(img1)
+        img1 = cv2.cvtColor(img_,cv2.COLOR_BGR2GRAY)
+        img2 = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
         sift = cv2.xfeatures2d.SIFT_create()
         kp1, des1 = sift.detectAndCompute(img1,None)
         kp2, des2 = sift.detectAndCompute(img2,None)
@@ -26,10 +28,6 @@ class ImageOp():
             pass
         dst = cv2.warpPerspective(img_,H,(img.shape[1] + img_.shape[1], img.shape[0]))
         plt.subplot(122),plt.imshow(dst)
-        plt.title("Warped Image")
-        plt.show()
-        plt.figure()
         dst[0:img.shape[0], 0:img.shape[1]] = img
         cv2.imwrite("output.jpg",dst)
-        plt.imshow(dst)
-        plt.show()
+
