@@ -1,6 +1,6 @@
-#TODO
-Clean Stitching class
+##TODO
+1.Clean Stitching class
 
-#TODO Algirithm
-Implement segmentation 
-Implement img2height
+##TODO Algirithm
+1.Implement segmentation 
+2.Implement img2height
