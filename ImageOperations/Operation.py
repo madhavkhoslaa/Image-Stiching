@@ -1,4 +1,3 @@
-import cv2
 import numpy as np
 import matplotlib.pyplot as plit
 from skimage import io
@@ -18,43 +17,40 @@ from skimage.feature import match_descriptors
 class Stitch():
     def __init__(self):
           pass
-    def sticher(self, img1, img2, img3):
+    def sticher(self, img_lst_3):
+        #TODO: Take in a 3 length list of images
+        #[] = map rgb to gray
+        #Loop through Image objects
         #Loading Images and turning to RGB
-        image1 = color.rgb2gray(io.imread(img1))
-        image2 = color.rgb2gray(io.imread(img2))
-        image3 = color.rgb2grey(io.imread(img3))
+        keypoints_descriptors=[]
+        load_rgb2g = lambda x: color.rgb2gray(io.imread(x))
+        gray_img = list(map(load_rgb2g, img_lst_3))
+
 
         #ORB is used to find featurs in images, n_keypoints
         #Is the number of features to be found in the Image
         #We use the orb instance to calculate features in each Image
         #We then Find the oevrlaping Features and remove the Redundant features
         orb = ORB(n_keypoints=800, fast_threshold= 0.07)
-        orb.detect_and_extract(image1)
-        keypoints0 = orb.keypoints
-        descriptors0 = orb.descriptors
-
-        orb.detect_and_extract(image2)
-        keypoints1 = orb.keypoints
-        descriptors1 = orb.descriptors
-
-        orb.detect_and_extract(image3)
-        keypoints2 = orb.keypoints
-        descriptors2 = orb.descriptors
-        matches01 = match_descriptors(descriptors0, descriptors1, cross_check=True)
-        matches12 = match_descriptors(descriptors1, descriptors2, cross_check=True)
+        for img in gray_img:
+            orb.detect_and_extract(img)
+            keypoints_descriptors.append((orb.keypoints, orb.descriptors))
+        
+        matches01 = match_descriptors(keypoints_descriptors[0][1], keypoints_descriptors[1][1], cross_check=True)
+        matches12 = match_descriptors(keypoints_descriptors[1][1], keypoints_descriptors[2][1], cross_check=True)
         #We use the RANSAC algorithm to remove the extra features
-        src = keypoints0[matches01[:, 0]][:, ::-1]
-        dst = keypoints1[matches01[:, 1]][:, ::-1]
+        src = keypoints_descriptors[0][0][matches01[:, 0]][:, ::-1]
+        dst = keypoints_descriptors[1][0][matches01[:, 1]][:, ::-1]
 
         model_robust01, inliers01 = ransac((src, dst), ProjectiveTransform, min_samples=4, residual_threshold=1, max_trials=300)
 
-        src = keypoints2[matches12[:, 1]][:, ::-1]
-        dst = keypoints1[matches12[:, 0]][:, ::-1]
+        src = keypoints_descriptors[2][0][matches12[:, 1]][:, ::-1]
+        dst = keypoints_descriptors[1][0][matches12[:, 0]][:, ::-1]
 
         model_robust12, inliers12 = ransac((src, dst), ProjectiveTransform, min_samples=4, residual_threshold=1, max_trials=300)
 
         #Warping the Images to stitch together
-        r, c = image1.shape[:2]
+        r, c = gray_img[0].shape[:2]
         corners = np.array([[0, 0],[0, r], [c, 0], [c, r]])
         warped_corners01 = model_robust01(corners)
         warped_corners12 = model_robust12(corners)
@@ -74,19 +70,19 @@ class Stitch():
 
         offset1 = SimilarityTransform(translation= -corner_min)
         transform01 = (model_robust01 + offset1).inverse
-        image1_warped = warp(image1, transform01, order=3,output_shape=output_shape, cval=-1)
+        image1_warped = warp(gray_img[0], transform01, order=3,output_shape=output_shape, cval=-1)
 
         image1_mask = (image1_warped != -1)  # Mask == 1 inside image
         image1_warped[~image1_mask] = 0      # Return background values to 0
 
 
-        image2_warped = warp(image2, offset1.inverse, order=3, output_shape=output_shape, cval=-1)
+        image2_warped = warp(gray_img[1], offset1.inverse, order=3, output_shape=output_shape, cval=-1)
 
         image2_mask = (image2_warped != -1)  # Mask == 1 inside image
         image2_warped[~image2_mask] = 0      # Return background values to 0
 
         transform12 = (model_robust12 + offset1).inverse
-        image3_warped = warp(image3, transform12, order=3, output_shape=output_shape, cval=-1)
+        image3_warped = warp(gray_img[2], transform12, order=3, output_shape=output_shape, cval=-1)
 
 
         image3_mask = (image3_warped != -1)  # Mask == 1 inside image
